@@ -17,6 +17,9 @@ class ToastFuture {
   Timer? _timer;
   bool _dismissed = false;
 
+  /// Callback to handle animated dismissal.
+  Future<void> Function()? onDismissedWithAnimation;
+
   /// Whether this toast has been dismissed.
   bool get dismissed => _dismissed;
 
@@ -29,11 +32,16 @@ class ToastFuture {
   }
 
   /// Dismiss this toast.
-  void dismiss() {
+  void dismiss() async {
     if (_dismissed) return;
     _dismissed = true;
     _timer?.cancel();
-    onDismiss?.call();
+
+    if (onDismissedWithAnimation != null) {
+      await onDismissedWithAnimation!();
+    } else {
+      onDismiss?.call();
+    }
   }
 
   /// Factory to create a ToastFuture.

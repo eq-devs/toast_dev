@@ -20,6 +20,7 @@ class ToastService {
   // ── Internal state ──────────────────────────────────────────────────
 
   static final _expandedIndex = ValueNotifier<int>(-1);
+  static final _toastCount = ValueNotifier<int>(0);
   static final List<_ToastEntry> _activeToasts = [];
   static OverlayState? _overlayState;
 
@@ -99,12 +100,9 @@ class ToastService {
     entry.controller.forward();
   }
 
-  static double _calculatePosition(_ToastEntry entry) {
-    return entry.position.value;
-  }
-
   static void _addOverlayEntry(_ToastEntry entry) {
     _activeToasts.add(entry);
+    _toastCount.value = _activeToasts.length;
   }
 
   static bool _isToastInFront(_ToastEntry entry) {
@@ -122,22 +120,18 @@ class ToastService {
   }
 
   static void _rebuildPositions() {
-    for (final entry in _activeToasts) {
-      entry.overlayEntry.markNeedsBuild();
-    }
+    // No longer needed with ValueListenableBuilders
   }
 
   static void _reverseUpdatePositions({int pos = 0}) {
     for (int i = pos - 1; i >= 0; i--) {
       _activeToasts[i].position.value -= 10;
-      _activeToasts[i].overlayEntry.markNeedsBuild();
     }
   }
 
   static void _forwardUpdatePositions() {
     for (final entry in _activeToasts) {
       entry.position.value += 10;
-      entry.overlayEntry.markNeedsBuild();
     }
   }
 
@@ -168,6 +162,7 @@ class ToastService {
       isReverse: true,
       pos: index,
     );
+    _toastCount.value = _activeToasts.length;
   }
 
   // ── Core show method ────────────────────────────────────────────────
@@ -237,11 +232,14 @@ class ToastService {
       final overlayEntry = OverlayEntry(
         builder: (context) {
           final paddingTop = MediaQuery.paddingOf(context).top;
-          return ValueListenableBuilder<double>(
-            valueListenable: toastPosition,
-            builder: (context, currentPos, _) {
-              final pos = currentPos +
-                  (_activeToasts.indexOf(entry) == _expandedIndex.value
+          return ListenableBuilder(
+            listenable: Listenable.merge([toastPosition, _expandedIndex, _toastCount]),
+            builder: (context, _) {
+              final index = _activeToasts.indexOf(entry);
+              if (index == -1) return const SizedBox.shrink();
+
+              final pos = toastPosition.value +
+                  (index == _expandedIndex.value
                       ? effectiveExpandedHeight
                       : 0.0);
               return AnimatedPositioned(
@@ -270,22 +268,15 @@ class ToastService {
                     },
                     child: AnimatedPadding(
                       padding: EdgeInsets.symmetric(
-                        horizontal: (_activeToasts.indexOf(entry) ==
-                                _expandedIndex.value
+                        horizontal: (index == _expandedIndex.value
                             ? 10
-                            : max(currentPos - 35, 0.0)),
+                            : max(toastPosition.value - 35, 0.0)),
                       ),
                       duration: const Duration(milliseconds: 500),
                       curve: effectivePositionCurve,
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: _expandedIndex,
-                        builder: (context, _, child) {
-                          return AnimatedOpacity(
-                            opacity: _calculateOpacity(entry),
-                            duration: const Duration(milliseconds: 500),
-                            child: child,
-                          );
-                        },
+                      child: AnimatedOpacity(
+                        opacity: _calculateOpacity(entry),
+                        duration: const Duration(milliseconds: 500),
                         child: ToastWidget(
                           message: message,
                           messageStyle: effectiveMessageStyle,
@@ -336,10 +327,10 @@ class ToastService {
 
       if (isAutoDismiss) {
         future.setTimer(effectiveLength.duration);
-        Future.delayed(effectiveLength.duration, () async {
+        future.onDismissedWithAnimation = () async {
           await _reverseAnimation(entry, isRemoveOverlay: false);
           _close(entry);
-        });
+        };
       }
     } else {
       // Return a no-op future if context is not mounted

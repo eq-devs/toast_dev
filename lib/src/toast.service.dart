@@ -20,16 +20,10 @@ class ToastService {
   // ── Internal state ──────────────────────────────────────────────────
 
   static final _expandedIndex = ValueNotifier<int>(-1);
-  static final List<OverlayEntry?> _overlayEntries = [];
-  static final List<double> _overlayPositions = [];
-  static final List<int> _overlayIndexList = [];
-  static final List<AnimationController?> _animationControllers = [];
+  static final List<_ToastEntry> _activeToasts = [];
   static OverlayState? _overlayState;
 
   static int? _showToastNumber;
-
-  static final _cache = <dynamic, AnimationController>{};
-  static final _futures = <AnimationController, ToastFuture>{};
 
   // ── Context-free support ────────────────────────────────────────────
 
@@ -66,8 +60,8 @@ class ToastService {
 
   /// Set the maximum number of visible toasts (default: 5).
   static void showToastNumber(int val) {
-    assert(val > 0,
-        "Show toast number can't be negative or zero. Default is 5.");
+    assert(
+        val > 0, "Show toast number can't be negative or zero. Default is 5.");
     if (val > 0) {
       _showToastNumber = val;
     }
@@ -75,50 +69,49 @@ class ToastService {
 
   // ── Internal helpers ────────────────────────────────────────────────
 
-  static Future _reverseAnimation(int index,
+  static Future _reverseAnimation(_ToastEntry entry,
       {bool isRemoveOverlay = true}) async {
-    if (_overlayIndexList.contains(index)) {
-      await _animationControllers[index]?.reverse();
+    if (_activeToasts.contains(entry)) {
+      await entry.controller.reverse();
       // Safety check: verify the toast still exists after the await
-      if (!_overlayIndexList.contains(index)) return;
-      
+      if (!_activeToasts.contains(entry)) return;
+
       await Future.delayed(const Duration(milliseconds: 50));
       // Safety check: verify the toast still exists after the delay
-      if (!_overlayIndexList.contains(index)) return;
+      if (!_activeToasts.contains(entry)) return;
 
       if (isRemoveOverlay) {
-        _removeOverlayEntry(index);
+        _removeOverlayEntry(entry);
       }
-      _cache.removeWhere((_, value) => value == _animationControllers[index]);
     }
   }
 
-  static void _removeOverlayEntry(int index) {
-    if (!_overlayIndexList.contains(index)) return;
+  static void _removeOverlayEntry(_ToastEntry entry) {
+    if (!_activeToasts.contains(entry)) return;
 
-    _overlayEntries[index]?.remove();
-    final controller = _animationControllers[index];
-    controller?.dispose();
-    _overlayIndexList.remove(index);
-    _futures.remove(controller);
+    entry.overlayEntry.remove();
+    entry.controller.dispose();
+    _activeToasts.remove(entry);
   }
 
-  static void _forwardAnimation(int index) {
-    _overlayState?.insert(_overlayEntries[index]!);
-    _animationControllers[index]?.forward();
+  static void _forwardAnimation(_ToastEntry entry) {
+    _overlayState?.insert(entry.overlayEntry);
+    entry.controller.forward();
   }
 
-  static double _calculatePosition(int index) {
-    return _overlayPositions[index];
+  static double _calculatePosition(_ToastEntry entry) {
+    return entry.position.value;
   }
 
-  static void _addOverlayPosition(int index) {
-    _overlayPositions.add(30);
-    _overlayIndexList.add(index);
+  static void _addOverlayEntry(_ToastEntry entry) {
+    _activeToasts.add(entry);
   }
 
-  static bool _isToastInFront(int index) =>
-      index > _overlayPositions.length - 5;
+  static bool _isToastInFront(_ToastEntry entry) {
+    final index = _activeToasts.indexOf(entry);
+    if (index == -1) return false;
+    return index > _activeToasts.length - 5;
+  }
 
   static void _updateOverlayPositions({bool isReverse = false, int pos = 0}) {
     if (isReverse) {
@@ -129,35 +122,35 @@ class ToastService {
   }
 
   static void _rebuildPositions() {
-    for (int i = 0; i < _overlayPositions.length; i++) {
-      _overlayEntries[i]?.markNeedsBuild();
+    for (final entry in _activeToasts) {
+      entry.overlayEntry.markNeedsBuild();
     }
   }
 
   static void _reverseUpdatePositions({int pos = 0}) {
     for (int i = pos - 1; i >= 0; i--) {
-      _overlayPositions[i] = _overlayPositions[i] - 10;
-      _overlayEntries[i]?.markNeedsBuild();
+      _activeToasts[i].position.value -= 10;
+      _activeToasts[i].overlayEntry.markNeedsBuild();
     }
   }
 
   static void _forwardUpdatePositions() {
-    for (int i = 0; i < _overlayPositions.length; i++) {
-      _overlayPositions[i] = _overlayPositions[i] + 10;
-      _overlayEntries[i]?.markNeedsBuild();
+    for (final entry in _activeToasts) {
+      entry.position.value += 10;
+      entry.overlayEntry.markNeedsBuild();
     }
   }
 
-  static double _calculateOpacity(int index) {
+  static double _calculateOpacity(_ToastEntry entry) {
     int noOfShowToast = _showToastNumber ?? 5;
-    if (_overlayIndexList.length <= noOfShowToast) return 1;
-    final isFirstFiveToast = _overlayIndexList
-        .sublist(_overlayIndexList.length - noOfShowToast)
-        .contains(index);
-    return isFirstFiveToast ? 1 : 0;
+    if (_activeToasts.length <= noOfShowToast) return 1;
+    final index = _activeToasts.indexOf(entry);
+    if (index == -1) return 0;
+    return (index >= _activeToasts.length - noOfShowToast) ? 1 : 0;
   }
 
-  static void _toggleExpand(int index) {
+  static void _toggleExpand(_ToastEntry entry) {
+    final index = _activeToasts.indexOf(entry);
     if (_expandedIndex.value == index) {
       _expandedIndex.value = -1;
     } else {
@@ -166,16 +159,15 @@ class ToastService {
     _rebuildPositions();
   }
 
-  static void _close(AnimationController controller) {
-    final index = _animationControllers.indexOf(controller);
-    if (index == -1 || !_overlayIndexList.contains(index)) return;
+  static void _close(_ToastEntry entry) {
+    final index = _activeToasts.indexOf(entry);
+    if (index == -1) return;
 
-    _removeOverlayEntry(index);
+    _removeOverlayEntry(entry);
     _updateOverlayPositions(
       isReverse: true,
       pos: index,
     );
-    _cache.removeWhere((_, value) => value == controller);
   }
 
   // ── Core show method ────────────────────────────────────────────────
@@ -205,19 +197,25 @@ class ToastService {
 
     // Read theme defaults
     final theme = ToastTheme.maybeOf(context);
-    final isTop = (position ?? theme?.position ?? ToastPosition.top) == ToastPosition.top;
+    final isTop =
+        (position ?? theme?.position ?? ToastPosition.top) == ToastPosition.top;
     final effectiveLength = length ?? theme?.length ?? ToastLength.short;
-    final effectiveDismissDir = dismissDirection ?? theme?.dismissDirection ?? DismissDirection.up;
-    final effectiveExpandedHeight = expandedHeight ?? theme?.expandedHeight ?? 100.0;
+    final effectiveDismissDir =
+        dismissDirection ?? theme?.dismissDirection ?? DismissDirection.up;
+    final effectiveExpandedHeight =
+        expandedHeight ?? theme?.expandedHeight ?? 100.0;
     final effectiveClosable = isClosable ?? theme?.isClosable ?? false;
-    final effectivePositionCurve = positionCurve ?? theme?.positionCurve ?? Curves.elasticOut;
+    final effectivePositionCurve =
+        positionCurve ?? theme?.positionCurve ?? Curves.elasticOut;
     final effectiveSlideCurve = slideCurve ?? theme?.slideCurve;
     final effectiveBgColor = backgroundColor ?? theme?.backgroundColor;
     final effectiveShadowColor = shadowColor ?? theme?.shadowColor;
     final effectiveIconColor = iconColor ?? theme?.iconColor;
     final effectiveMessageStyle = messageStyle ?? theme?.messageStyle;
     final effectiveAnimBuilder = animationBuilder ?? theme?.animationBuilder;
-    final effectiveAnimDuration = animationDuration ?? theme?.animationDuration ?? const Duration(milliseconds: 1000);
+    final effectiveAnimDuration = animationDuration ??
+        theme?.animationDuration ??
+        const Duration(milliseconds: 1000);
 
     assert(effectiveExpandedHeight >= 0.0,
         "Expanded height should not be a negative number!");
@@ -231,103 +229,116 @@ class ToastService {
         duration: effectiveAnimDuration,
         reverseDuration: effectiveAnimDuration,
       );
-      _animationControllers.add(controller);
-      final controllerIndex = _animationControllers.indexOf(controller);
-      _addOverlayPosition(controllerIndex);
+
+      final toastPosition = ValueNotifier<double>(30.0);
       final dragProgress = ValueNotifier<double>(1.0);
 
+      late final _ToastEntry entry;
       final overlayEntry = OverlayEntry(
         builder: (context) {
           final paddingTop = MediaQuery.paddingOf(context).top;
-          final pos = _calculatePosition(controllerIndex) +
-              (_expandedIndex.value == controllerIndex
-                  ? effectiveExpandedHeight
-                  : 0.0);
-          return AnimatedPositioned(
-            top: isTop ? paddingTop + pos : null,
-            bottom: isTop ? null : pos,
-            left: 10,
-            right: 10,
-            duration: const Duration(milliseconds: 500),
-            curve: effectivePositionCurve,
-            child: Dismissible(
-              key: Key(UniqueKey().toString()),
-              direction: effectiveDismissDir,
-              onUpdate: (details) {
-                dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);
-              },
-              onDismissed: (_) {
-                _close(controller);
-              },
-              child: ValueListenableBuilder<double>(
-                valueListenable: dragProgress,
-                builder: (context, opacity, child) {
-                  return Opacity(
-                    opacity: opacity,
-                    child: child,
-                  );
-                },
-                child: AnimatedPadding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: (_expandedIndex.value == controllerIndex
-                        ? 10
-                        : max(_calculatePosition(controllerIndex) - 35, 0.0)),
-                  ),
-                  duration: const Duration(milliseconds: 500),
-                  curve: effectivePositionCurve,
-                  child: AnimatedOpacity(
-                    opacity: _calculateOpacity(controllerIndex),
-                    duration: const Duration(milliseconds: 500),
-                    child: ToastWidget(
-                      message: message,
-                      messageStyle: effectiveMessageStyle,
-                      backgroundColor: effectiveBgColor,
-                      shadowColor: effectiveShadowColor,
-                      iconColor: effectiveIconColor,
-                      slideCurve: effectiveSlideCurve,
-                      isClosable: effectiveClosable,
-                      isTop: isTop,
-                      isInFront: _isToastInFront(
-                          _animationControllers.indexOf(controller)),
-                      controller: controller,
-                      animationBuilder: effectiveAnimBuilder,
-                      onTap: () => _toggleExpand(controllerIndex),
-                      onClose: () {
-                        _close(controller);
-                      },
-                      leading: leading,
-                      child: child,
+          return ValueListenableBuilder<double>(
+            valueListenable: toastPosition,
+            builder: (context, currentPos, _) {
+              final pos = currentPos +
+                  (_activeToasts.indexOf(entry) == _expandedIndex.value
+                      ? effectiveExpandedHeight
+                      : 0.0);
+              return AnimatedPositioned(
+                top: isTop ? paddingTop + pos : null,
+                bottom: isTop ? null : pos,
+                left: 10,
+                right: 10,
+                duration: const Duration(milliseconds: 500),
+                curve: effectivePositionCurve,
+                child: Dismissible(
+                  key: Key(UniqueKey().toString()),
+                  direction: effectiveDismissDir,
+                  onUpdate: (details) {
+                    dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);
+                  },
+                  onDismissed: (_) {
+                    _close(entry);
+                  },
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: dragProgress,
+                    builder: (context, opacity, child) {
+                      return Opacity(
+                        opacity: opacity,
+                        child: child,
+                      );
+                    },
+                    child: AnimatedPadding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: (_activeToasts.indexOf(entry) ==
+                                _expandedIndex.value
+                            ? 10
+                            : max(currentPos - 35, 0.0)),
+                      ),
+                      duration: const Duration(milliseconds: 500),
+                      curve: effectivePositionCurve,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _expandedIndex,
+                        builder: (context, _, child) {
+                          return AnimatedOpacity(
+                            opacity: _calculateOpacity(entry),
+                            duration: const Duration(milliseconds: 500),
+                            child: child,
+                          );
+                        },
+                        child: ToastWidget(
+                          message: message,
+                          messageStyle: effectiveMessageStyle,
+                          backgroundColor: effectiveBgColor,
+                          shadowColor: effectiveShadowColor,
+                          iconColor: effectiveIconColor,
+                          slideCurve: effectiveSlideCurve,
+                          isClosable: effectiveClosable,
+                          isTop: isTop,
+                          isInFront: _isToastInFront(entry),
+                          controller: controller,
+                          animationBuilder: effectiveAnimBuilder,
+                          onTap: () => _toggleExpand(entry),
+                          onClose: () {
+                            _close(entry);
+                          },
+                          leading: leading,
+                          child: child,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       );
 
-      _overlayEntries.add(overlayEntry);
+      entry = _ToastEntry(
+        overlayEntry: overlayEntry,
+        controller: controller,
+        tag: tag,
+        position: toastPosition,
+      );
+
+      _addOverlayEntry(entry);
       _updateOverlayPositions();
-      _forwardAnimation(_animationControllers.indexOf(controller));
-      _cache.putIfAbsent(tag, () => controller);
+      _forwardAnimation(entry);
 
       future = ToastFuture.create(
         entry: overlayEntry,
         controller: controller,
         onDismiss: () {
-          _close(controller);
+          _close(entry);
         },
       );
-      _futures[controller] = future;
 
       if (isAutoDismiss) {
         future.setTimer(effectiveLength.duration);
         Future.delayed(effectiveLength.duration, () async {
-          await _reverseAnimation(
-            _animationControllers.indexOf(controller),
-            isRemoveOverlay: false,
-          );
-          _close(controller);
+          await _reverseAnimation(entry, isRemoveOverlay: false);
+          _close(entry);
         });
       }
     } else {
@@ -348,14 +359,32 @@ class ToastService {
 
   static Future dismiss({dynamic tag}) async {
     if (tag != null) {
-      final controller = _cache[tag];
-      await _reverseAnimation(_animationControllers.indexOf(controller));
+      final entries = _activeToasts.where((e) => e.tag == tag).toList();
+      for (final entry in entries) {
+        await _reverseAnimation(entry);
+      }
     } else {
-      for (int index = 0; index < _animationControllers.length; index++) {
-        await _reverseAnimation(index);
+      final entries = List<_ToastEntry>.from(_activeToasts);
+      for (final entry in entries) {
+        await _reverseAnimation(entry);
       }
     }
   }
+}
+
+/// Internal class to hold toast state.
+class _ToastEntry {
+  final OverlayEntry overlayEntry;
+  final AnimationController controller;
+  final dynamic tag;
+  final ValueNotifier<double> position;
+
+  _ToastEntry({
+    required this.overlayEntry,
+    required this.controller,
+    required this.tag,
+    required this.position,
+  });
 }
 
 // ── Top-level API ─────────────────────────────────────────────────────

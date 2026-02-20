@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'animation/animation.builder.dart';
 
 /// The visual toast widget with slide animation, shadow, and interaction.
-class ToastWidget extends StatefulWidget {
+class ToastWidget extends StatelessWidget {
   const ToastWidget({
     super.key,
     this.isInFront = false,
@@ -40,36 +40,31 @@ class ToastWidget extends StatefulWidget {
   final ToastAnimationBuilder? animationBuilder;
 
   @override
-  State<ToastWidget> createState() => _ToastWidgetState();
-}
-
-class _ToastWidgetState extends State<ToastWidget> {
-  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: widget.controller!,
+      animation: controller!,
       builder: (context, _) {
         final animationValue = CurvedAnimation(
-          parent: widget.controller!,
-          curve: widget.slideCurve ?? Curves.elasticOut,
-          reverseCurve: widget.slideCurve ?? Curves.elasticOut,
+          parent: controller!,
+          curve: slideCurve ?? Curves.elasticOut,
+          reverseCurve: slideCurve ?? Curves.elasticOut,
         );
 
-        Widget content = _buildContent(context);
+        Widget content = _BuildContent(widget: this);
 
         // Use custom animation builder if provided
-        if (widget.animationBuilder != null) {
-          return widget.animationBuilder!(
+        if (animationBuilder != null) {
+          return animationBuilder!(
             context,
             content,
-            widget.controller!,
-            widget.controller!.value,
+            controller!,
+            controller!.value,
           );
         }
 
         // Default slide animation
         final offset = Tween<Offset>(
-          begin: Offset(0.0, widget.isTop == true ? -1 : 1.0),
+          begin: Offset(0.0, isTop == true ? -1 : 1.0),
           end: Offset.zero,
         ).evaluate(animationValue);
 
@@ -84,28 +79,40 @@ class _ToastWidgetState extends State<ToastWidget> {
       },
     );
   }
+}
 
-  Widget _buildContent(BuildContext context) {
+@immutable
+class _BuildContent extends StatelessWidget {
+  const _BuildContent({required this.widget});
+  final ToastWidget widget;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
       type: MaterialType.transparency,
       child: Container(
         width: MediaQuery.sizeOf(context).width,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: (widget.child != null)
+            ? null
+            : const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           color: widget.backgroundColor ?? Colors.white,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: widget.isInFront ? 0.5 : 0.0,
-              offset: const Offset(0.0, -1.0),
-              color: widget.shadowColor ?? Colors.grey.shade400,
-            ),
-            BoxShadow(
-              blurRadius: widget.isInFront ? 12 : 3,
-              offset: const Offset(0.0, 7.0),
-              color: widget.shadowColor ?? Colors.grey.shade400,
-            ),
-          ],
+          boxShadow: !widget.isInFront
+              ? []
+              : [
+                  BoxShadow(
+                    blurRadius: widget.isInFront ? 0.5 : 0.0,
+                    offset: const Offset(0.0, -1.0),
+                    color: widget.shadowColor ?? Colors.grey.shade300,
+                  ),
+                  BoxShadow(
+                    blurRadius: widget.isInFront ? 12 : 3,
+                    offset: const Offset(0.0, 7.0),
+                    color: widget.shadowColor ?? Colors.grey.shade300,
+                  ),
+                ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

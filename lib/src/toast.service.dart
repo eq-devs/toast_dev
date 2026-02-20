@@ -233,7 +233,8 @@ class ToastService {
         builder: (context) {
           final paddingTop = MediaQuery.paddingOf(context).top;
           return ListenableBuilder(
-            listenable: Listenable.merge([toastPosition, _expandedIndex, _toastCount]),
+            listenable:
+                Listenable.merge([toastPosition, _expandedIndex, _toastCount]),
             builder: (context, _) {
               final index = _activeToasts.indexOf(entry);
               if (index == -1) return const SizedBox.shrink();
@@ -250,7 +251,7 @@ class ToastService {
                 duration: const Duration(milliseconds: 500),
                 curve: effectivePositionCurve,
                 child: Dismissible(
-                  key: Key(UniqueKey().toString()),
+                  key: ObjectKey(entry.hashCode),
                   direction: effectiveDismissDir,
                   onUpdate: (details) {
                     dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);

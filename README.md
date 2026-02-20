@@ -1,168 +1,141 @@
-# Toast Dev
+# Toast Dev 🍞
 
-__Toast Dev__ is a Flutter plugin for showing beautiful animated toasts in your app. It comes with fully customizable features and smooth animations.
+A premium Flutter package for showing beautiful, stackable, and fully customizable animated toasts.
 
-## Table of Contents
+[![pub package](https://img.shields.io/pub/v/toast_dev.svg)](https://pub.dev/packages/toast_dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Basic Usage](#basic-usage)
-  - [Customization](#customization)
-- [Example](#example)
-- [Contributing](#contributing)
-- [License](#license)
+---
 
-## Installation
+## ✨ Features
 
-To use this plugin, add it to your `pubspec.yaml` file:
+- 📚 **Stackable Toasts**: Show multiple toasts without overlapping.
+- ⚡ **Context-Free Usage**: Show toasts from anywhere in your app using `ToastDev` wrapper.
+- 🎨 **Fully Customizable**: Control everything from colors and shadows to animations and curves.
+- 🛠️ **Custom Widgets**: Display any widget as a toast.
+- 🤏 **Interactive**: Support for "pull-to-dismiss" and tap-to-expand behaviors.
+- 🎭 **Smooth Animations**: Built-in fade, slide, and scale animations.
+
+---
+
+## 🚀 Getting Started
+
+### Installation
+
+Add `toast_dev` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  toasty_box: ^1.0.1
+  toast_dev: ^1.0.3
 ```
 
-
-
-Then, run:
+Then run:
 
 ```bash
-$ flutter pub get
+flutter pub get
 ```
 
-## Usage
+---
 
-### Basic Usage
+## 📖 Usage
 
-Import the package:
+### 1. Initialization (Optional but Recommended)
+
+Wrap your `MaterialApp` with `ToastDev` to enable context-free usage and set global defaults.
 
 ```dart
-import 'package:toasty_box/toasty_box.dart';
+import 'package:toast_dev/toast.dev.dart';
+
+void main() {
+  runApp(
+    ToastDev(
+      position: ToastPosition.top,
+      length: ToastLength.medium,
+      child: MaterialApp(
+        home: MyApp(),
+      ),
+    ),
+  );
+}
 ```
 
-Show a simple message toast:
+### 2. Basic Usage
+
+Show a simple message toast from anywhere:
 
 ```dart
-ToastService.showToast(
-                  context,
-                  message: "This is a message toast 👋😎!",
-                );
+import 'package:toast_dev/toast.dev.dart';
+
+// Context-free usage (requires ToastDev wrapper)
+showToast(message: "Hello from Toast Dev! 👋");
+
+// Or using context
+showToast(context: context, message: "Hello!");
 ```
 
-Pretty simple, isn't it? 😏
+### 3. Custom Widget Toasts
 
-| Message Toast                                                | Widget Toast                                                 |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| (Image Removed) | (Image Removed) |
-
-
-
-### Customization
-
-You can customize the appearance of your toasts by providing additional parameters.
-
-For message toasts -
+Display your own beautiful UI as a toast:
 
 ```dart
-ToastService.showToast(
-                  context,
-                  isClosable: true,
-                  backgroundColor: Colors.teal.shade500,
-                  shadowColor: Colors.teal.shade200,
-                  length: ToastLength.medium,
-                  expandedHeight: 100,
-                  message: "This is a message toast 👋😎!",
-                  messageStyle: TextStyle(fontSize: 18),
-                  leading: const Icon(Icons.messenger),
-                  slideCurve: Curves.elasticInOut,
-                  positionCurve: Curves.bounceOut,
-                  dismissDirection: DismissDirection.none,
-                );
+showWidgetToast(
+  child: ListTile(
+    leading: Icon(Icons.celebration, color: Colors.deepOrange),
+    title: Text('Congratulations!'),
+    subtitle: Text('Highly customizable toasts are here.'),
+  ),
+);
 ```
 
-For widget toast - 
+### 4. Advanced Customization
 
-```dar
-ToastService.showWidgetToast(
-                  context,
-                  isClosable: true,
-                  backgroundColor: Colors.teal.shade500,
-                  shadowColor: Colors.teal.shade200,
-                  length: ToastLength.medium,
-                  expandedHeight: 100,
-                  leading: const Icon(Icons.messenger),
-                  slideCurve: Curves.elasticInOut,
-                  positionCurve: Curves.bounceOut,
-                  dismissDirection: DismissDirection.none,
-                  child: Container(
-                  	color: Colors.blue,
-                  	child: Center(
-                  		child: Text('This is widget toast!'),
-                  	),
-                  ),
-                );
+```dart
+showToast(
+  message: "Premium Toast",
+  backgroundColor: Colors.black87,
+  shadowColor: Colors.black26,
+  isClosable: true,
+  length: ToastLength.long,
+  position: ToastPosition.bottom,
+  positionCurve: Curves.elasticOut,
+  animationBuilder: (context, child, controller) {
+    return FadeTransition(opacity: controller, child: child);
+  },
+);
 ```
 
+---
 
+## 🛠️ Configuration Options
 
-#### Customization Options
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `message` | Text to display | `null` |
+| `child` | Custom widget to display | `null` |
+| `position` | `top` or `bottom` | `ToastPosition.top` |
+| `length` | duration: `short`, `medium`, `long`, `ages`, `never` | `ToastLength.short` |
+| `isClosable` | Show a close button | `false` |
+| `backgroundColor` | Background color of the toast | `Theme` dependent |
+| `animationDuration`| Duration of enter/exit animations | `1000ms` |
+| `dismissDirection` | Direction to swipe for dismissal | `up` or `down` |
 
-- **`message`**: The text to be displayed in the toast.
-- **`messageStyle`**: Message text style to be displayed in the toast
-- **`leading`**: Leading widget in the toast
-- **`isClosable`**: Shows the close button as a trailing widget
-- **`expandedHeight`**: Height of the toast from bottom of the screen when it is tapped
-- **`length`**: The duration of the toast in `ToastLength` enum - `[short,medium,long,ages,never]`
-- **`backgroundColor`**: The background color of the toast.
-- **`shadowColor`**: Shadow color of the toast
-- **`slideCurve`**: Animation curve when list of toasts is reordered
-- **`positionCurve`**: Animation curve when toast enters the screen and exits from the screen
-- **`child`**: Widget in the toast to be shown
+---
 
+## 📋 Example
 
-Moreover, you can use `showWidgetToast` to display any custom widget.
-
-
-## Example
-
-Check out the example folder for a comprehensive implementation of how to use this plugin. The example demonstrates various customization options and use cases. You can run the example using:
+Check out the `example` folder for a complete demonstration of features.
 
 ```bash
-$ cd example
-$ flutter run
+cd example
+flutter run
 ```
 
+---
 
+## 📄 License
 
-## Contributing
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-We welcome contributions! If you find any issues or have suggestions for improvements, feel free to open an issue or submit a pull request.
+---
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
-```
-
-MIT License
-
-Copyright (c) 2023 YE LWIN OO
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-🏗️🏗️ More updates are coming soon...
+🏗️ *More updates and sleek animations coming soon!*

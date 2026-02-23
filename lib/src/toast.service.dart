@@ -7,7 +7,7 @@ import 'animation/animation.builder.dart';
 import 'toast.future.dart';
 import 'toast.length.dart';
 import 'toast.position.dart';
-import 'toast.theme.dart';
+
 import 'toast.widget.dart';
 
 /// Show and manage toast notifications.
@@ -73,7 +73,10 @@ class ToastService {
   static Future _reverseAnimation(_ToastEntry entry,
       {bool isRemoveOverlay = true}) async {
     if (_activeToasts.contains(entry)) {
-      await entry.controller.reverse();
+      final state = entry.stateKey.currentState;
+      if (state != null) {
+        await state.reverseAnimation();
+      }
       // Safety check: verify the toast still exists after the await
       if (!_activeToasts.contains(entry)) return;
 
@@ -91,13 +94,8 @@ class ToastService {
     if (!_activeToasts.contains(entry)) return;
 
     entry.overlayEntry.remove();
-    entry.controller.dispose();
+    entry.position.dispose();
     _activeToasts.remove(entry);
-  }
-
-  static void _forwardAnimation(_ToastEntry entry) {
-    _overlayState?.insert(entry.overlayEntry);
-    entry.controller.forward();
   }
 
   static void _addOverlayEntry(_ToastEntry entry) {
@@ -190,27 +188,21 @@ class ToastService {
   }) {
     context = _resolveContext(context);
 
-    // Read theme defaults
-    final theme = ToastTheme.maybeOf(context);
-    final isTop =
-        (position ?? theme?.position ?? ToastPosition.top) == ToastPosition.top;
-    final effectiveLength = length ?? theme?.length ?? ToastLength.short;
-    final effectiveDismissDir =
-        dismissDirection ?? theme?.dismissDirection ?? DismissDirection.up;
-    final effectiveExpandedHeight =
-        expandedHeight ?? theme?.expandedHeight ?? 100.0;
-    final effectiveClosable = isClosable ?? theme?.isClosable ?? false;
-    final effectivePositionCurve =
-        positionCurve ?? theme?.positionCurve ?? Curves.elasticOut;
-    final effectiveSlideCurve = slideCurve ?? theme?.slideCurve;
-    final effectiveBgColor = backgroundColor ?? theme?.backgroundColor;
-    final effectiveShadowColor = shadowColor ?? theme?.shadowColor;
-    final effectiveIconColor = iconColor ?? theme?.iconColor;
-    final effectiveMessageStyle = messageStyle ?? theme?.messageStyle;
-    final effectiveAnimBuilder = animationBuilder ?? theme?.animationBuilder;
-    final effectiveAnimDuration = animationDuration ??
-        theme?.animationDuration ??
-        const Duration(milliseconds: 1000);
+    // Read defaults strictly from method arguments or fallback
+    final isTop = (position ?? ToastPosition.top) == ToastPosition.top;
+    final effectiveLength = length ?? ToastLength.short;
+    final effectiveDismissDir = dismissDirection ?? DismissDirection.up;
+    final effectiveExpandedHeight = expandedHeight ?? 100.0;
+    final effectiveClosable = isClosable ?? false;
+    final effectivePositionCurve = positionCurve ?? Curves.elasticOut;
+    final effectiveSlideCurve = slideCurve;
+    final effectiveBgColor = backgroundColor;
+    final effectiveShadowColor = shadowColor;
+    final effectiveIconColor = iconColor;
+    final effectiveMessageStyle = messageStyle;
+    final effectiveAnimBuilder = animationBuilder;
+    final effectiveAnimDuration =
+        animationDuration ?? const Duration(milliseconds: 1000);
 
     assert(effectiveExpandedHeight >= 0.0,
         "Expanded height should not be a negative number!");
@@ -219,108 +211,50 @@ class ToastService {
 
     if (context.mounted) {
       _overlayState = Overlay.of(context);
-      final controller = AnimationController(
-        vsync: _overlayState!,
-        duration: effectiveAnimDuration,
-        reverseDuration: effectiveAnimDuration,
-      );
-
       final toastPosition = ValueNotifier<double>(30.0);
-      final dragProgress = ValueNotifier<double>(1.0);
 
       late final _ToastEntry entry;
-      final overlayEntry = OverlayEntry(
-        builder: (context) {
-          final paddingTop = MediaQuery.paddingOf(context).top;
-          return ListenableBuilder(
-            listenable:
-                Listenable.merge([toastPosition, _expandedIndex, _toastCount]),
-            builder: (context, _) {
-              final index = _activeToasts.indexOf(entry);
-              if (index == -1) return const SizedBox.shrink();
+      final key = GlobalKey<_ToastOverlayUIState>();
 
-              final pos = toastPosition.value +
-                  (index == _expandedIndex.value
-                      ? effectiveExpandedHeight
-                      : 0.0);
-              return AnimatedPositioned(
-                top: isTop ? paddingTop + pos : null,
-                bottom: isTop ? null : pos,
-                left: 10,
-                right: 10,
-                duration: const Duration(milliseconds: 500),
-                curve: effectivePositionCurve,
-                child: Dismissible(
-                  key: ObjectKey(entry.hashCode),
-                  direction: effectiveDismissDir,
-                  onUpdate: (details) {
-                    dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);
-                  },
-                  onDismissed: (_) {
-                    _close(entry);
-                  },
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: dragProgress,
-                    builder: (context, opacity, child) {
-                      return Opacity(
-                        opacity: opacity,
-                        child: child,
-                      );
-                    },
-                    child: AnimatedPadding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: (index == _expandedIndex.value
-                            ? 10
-                            : max(toastPosition.value - 35, 0.0)),
-                      ),
-                      duration: const Duration(milliseconds: 500),
-                      curve: effectivePositionCurve,
-                      child: AnimatedOpacity(
-                        opacity: _calculateOpacity(entry),
-                        duration: const Duration(milliseconds: 500),
-                        child: ToastWidget(
-                          message: message,
-                          messageStyle: effectiveMessageStyle,
-                          backgroundColor: effectiveBgColor,
-                          shadowColor: effectiveShadowColor,
-                          iconColor: effectiveIconColor,
-                          slideCurve: effectiveSlideCurve,
-                          isClosable: effectiveClosable,
-                          isTop: isTop,
-                          isInFront: _isToastInFront(entry),
-                          controller: controller,
-                          animationBuilder: effectiveAnimBuilder,
-                          onTap: () => _toggleExpand(entry),
-                          onClose: () {
-                            _close(entry);
-                          },
-                          leading: leading,
-                          child: child,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+      final overlayEntry = OverlayEntry(
+        builder: (context) => _ToastOverlayUI(
+          key: key,
+          entry: entry,
+          isTop: isTop,
+          effectiveExpandedHeight: effectiveExpandedHeight,
+          effectivePositionCurve: effectivePositionCurve,
+          effectiveDismissDir: effectiveDismissDir,
+          effectiveMessageStyle: effectiveMessageStyle,
+          effectiveBgColor: effectiveBgColor,
+          effectiveShadowColor: effectiveShadowColor,
+          effectiveIconColor: effectiveIconColor,
+          effectiveSlideCurve: effectiveSlideCurve,
+          effectiveClosable: effectiveClosable,
+          effectiveAnimBuilder: effectiveAnimBuilder,
+          effectiveAnimDuration: effectiveAnimDuration,
+          message: message,
+          leading: leading,
+          child: child,
+        ),
       );
 
       entry = _ToastEntry(
         overlayEntry: overlayEntry,
-        controller: controller,
         tag: tag,
         position: toastPosition,
+        stateKey: key,
       );
 
       _addOverlayEntry(entry);
+      _overlayState?.insert(entry.overlayEntry);
       _updateOverlayPositions();
-      _forwardAnimation(entry);
 
       future = ToastFuture.create(
         entry: overlayEntry,
-        controller: controller,
+        controller: AnimationController(
+          vsync: const _NoTickerProvider(),
+          duration: Duration.zero,
+        ),
         onDismiss: () {
           _close(entry);
         },
@@ -367,15 +301,15 @@ class ToastService {
 /// Internal class to hold toast state.
 class _ToastEntry {
   final OverlayEntry overlayEntry;
-  final AnimationController controller;
   final dynamic tag;
   final ValueNotifier<double> position;
+  final GlobalKey<_ToastOverlayUIState> stateKey;
 
   _ToastEntry({
     required this.overlayEntry,
-    required this.controller,
     required this.tag,
     required this.position,
+    required this.stateKey,
   });
 }
 
@@ -485,4 +419,158 @@ class _NoTickerProvider extends TickerProvider {
 
   @override
   Ticker createTicker(TickerCallback onTick) => Ticker(onTick);
+}
+
+/// The extracted UI widget that handles the layout, animations, and interaction
+/// of the toast on the overlay.
+class _ToastOverlayUI extends StatefulWidget {
+  const _ToastOverlayUI({
+    super.key,
+    required this.entry,
+    required this.isTop,
+    required this.effectiveExpandedHeight,
+    required this.effectivePositionCurve,
+    required this.effectiveDismissDir,
+    required this.effectiveMessageStyle,
+    required this.effectiveBgColor,
+    required this.effectiveShadowColor,
+    required this.effectiveIconColor,
+    required this.effectiveSlideCurve,
+    required this.effectiveClosable,
+    required this.effectiveAnimBuilder,
+    required this.effectiveAnimDuration,
+    this.message,
+    this.leading,
+    this.child,
+  });
+
+  final _ToastEntry entry;
+  final bool isTop;
+  final double effectiveExpandedHeight;
+  final Curve effectivePositionCurve;
+  final DismissDirection effectiveDismissDir;
+  final TextStyle? effectiveMessageStyle;
+  final Color? effectiveBgColor;
+  final Color? effectiveShadowColor;
+  final Color? effectiveIconColor;
+  final Curve? effectiveSlideCurve;
+  final bool effectiveClosable;
+  final ToastAnimationBuilder? effectiveAnimBuilder;
+  final Duration effectiveAnimDuration;
+  final String? message;
+  final Widget? leading;
+  final Widget? child;
+
+  @override
+  State<_ToastOverlayUI> createState() => _ToastOverlayUIState();
+}
+
+class _ToastOverlayUIState extends State<_ToastOverlayUI>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late ValueNotifier<double> _dragProgress;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.effectiveAnimDuration,
+      reverseDuration: widget.effectiveAnimDuration,
+    );
+    _dragProgress = ValueNotifier<double>(1.0);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _dragProgress.dispose();
+    super.dispose();
+  }
+
+  Future<void> reverseAnimation() async {
+    await _controller.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final paddingTop = MediaQuery.paddingOf(context).top;
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        widget.entry.position,
+        ToastService._expandedIndex,
+        ToastService._toastCount
+      ]),
+      builder: (context, _) {
+        final index = ToastService._activeToasts.indexOf(widget.entry);
+        if (index == -1) return const SizedBox.shrink();
+
+        final pos = widget.entry.position.value +
+            (index == ToastService._expandedIndex.value
+                ? widget.effectiveExpandedHeight
+                : 0.0);
+        return AnimatedPositioned(
+          top: widget.isTop ? paddingTop + pos : null,
+          bottom: widget.isTop ? null : pos,
+          left: 10,
+          right: 10,
+          duration: const Duration(milliseconds: 300),
+          curve: widget.effectivePositionCurve,
+          child: Dismissible(
+            key: ObjectKey(widget.entry.hashCode),
+            direction: widget.effectiveDismissDir,
+            onUpdate: (details) {
+              _dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);
+            },
+            onDismissed: (_) {
+              ToastService._close(widget.entry);
+            },
+            child: ValueListenableBuilder<double>(
+              valueListenable: _dragProgress,
+              builder: (context, opacity, child) {
+                return Opacity(
+                  opacity: opacity,
+                  child: child,
+                );
+              },
+              child: AnimatedPadding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: (index == ToastService._expandedIndex.value
+                      ? 10
+                      : max(widget.entry.position.value - 35, 0.0)),
+                ),
+                duration: const Duration(milliseconds: 300),
+                curve: widget.effectivePositionCurve,
+                child: AnimatedOpacity(
+                  opacity: ToastService._calculateOpacity(widget.entry),
+                  duration: const Duration(milliseconds: 300),
+                  child: ToastWidget(
+                    message: widget.message,
+                    messageStyle: widget.effectiveMessageStyle,
+                    backgroundColor: widget.effectiveBgColor,
+                    shadowColor: widget.effectiveShadowColor,
+                    iconColor: widget.effectiveIconColor,
+                    slideCurve: widget.effectiveSlideCurve,
+                    isClosable: widget.effectiveClosable,
+                    isTop: widget.isTop,
+                    isInFront: ToastService._isToastInFront(widget.entry),
+                    controller: _controller,
+                    animationBuilder: widget.effectiveAnimBuilder,
+                    onTap: () => ToastService._toggleExpand(widget.entry),
+                    onClose: () async {
+                      await _controller.reverse();
+                      ToastService._close(widget.entry);
+                    },
+                    leading: widget.leading,
+                    child: widget.child,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -4,9 +4,6 @@ import 'package:toast_dev/toast.dev.dart';
 void main() {
   runApp(
     ToastDev(
-      position: ToastPosition.top,
-      length: ToastLength.medium,
-      dismissDirection: DismissDirection.up,
       child: MaterialApp(
         theme: ThemeData(
           useMaterial3: true,

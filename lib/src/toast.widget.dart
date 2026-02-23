@@ -105,12 +105,12 @@ class _BuildContent extends StatelessWidget {
                   BoxShadow(
                     blurRadius: widget.isInFront ? 0.5 : 0.0,
                     offset: const Offset(0.0, -1.0),
-                    color: widget.shadowColor ?? Colors.grey.shade300,
+                    color: widget.shadowColor ?? Colors.grey.shade100,
                   ),
                   BoxShadow(
                     blurRadius: widget.isInFront ? 12 : 3,
                     offset: const Offset(0.0, 7.0),
-                    color: widget.shadowColor ?? Colors.grey.shade300,
+                    color: widget.shadowColor ?? Colors.grey.shade100,
                   ),
                 ],
         ),

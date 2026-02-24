@@ -41,42 +41,45 @@ class ToastWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 1. Create the animation objects ONCE per build, not per frame
+    final animationValue = CurvedAnimation(
+      parent: controller!,
+      curve: slideCurve ?? Curves.elasticOut,
+      reverseCurve: slideCurve ?? Curves.elasticOut,
+    );
+
+    final offsetTween = Tween<Offset>(
+      begin: Offset(0.0, isTop == true ? -1 : 1.0),
+      end: Offset.zero,
+    );
+
+    // 2. Build the heavy physical widget tree ONCE
+    Widget content = _BuildContent(widget: this);
+
+    // Use custom animation builder if provided
+    if (animationBuilder != null) {
+      return animationBuilder!(
+        context,
+        content,
+        controller!,
+        animationValue.value,
+      );
+    }
+
+    // Default slide animation
     return AnimatedBuilder(
       animation: controller!,
-      builder: (context, _) {
-        final animationValue = CurvedAnimation(
-          parent: controller!,
-          curve: slideCurve ?? Curves.elasticOut,
-          reverseCurve: slideCurve ?? Curves.elasticOut,
-        );
-
-        Widget content = _BuildContent(widget: this);
-
-        // Use custom animation builder if provided
-        if (animationBuilder != null) {
-          return animationBuilder!(
-            context,
-            content,
-            controller!,
-            controller!.value,
-          );
-        }
-
-        // Default slide animation
-        final offset = Tween<Offset>(
-          begin: Offset(0.0, isTop == true ? -1 : 1.0),
-          end: Offset.zero,
-        ).evaluate(animationValue);
-
+      builder: (context, child) {
         return FadeTransition(
           opacity: animationValue,
           child: AnimatedSlide(
-            offset: offset,
+            offset: offsetTween.evaluate(animationValue),
             duration: Duration.zero,
-            child: content,
+            child: child, // Re-use the previously built content
           ),
         );
       },
+      child: content, // Pass the static content to AnimatedBuilder
     );
   }
 }
@@ -157,5 +160,3 @@ class _BuildContent extends StatelessWidget {
     );
   }
 }
-
-

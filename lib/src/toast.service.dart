@@ -43,6 +43,7 @@ class ToastService {
   static BuildContext _resolveContext(BuildContext? context) {
     if (context != null) return context;
     if (_contextMap.isNotEmpty) return _contextMap.values.first;
+
     throw FlutterError.fromParts(<DiagnosticsNode>[
       ErrorSummary('No BuildContext available for ToastService.'),
       ErrorDescription(

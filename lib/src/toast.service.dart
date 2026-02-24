@@ -22,7 +22,6 @@ class ToastService {
   static final _expandedIndex = ValueNotifier<int>(-1);
   static final _toastCount = ValueNotifier<int>(0);
   static final List<_ToastEntry> _activeToasts = [];
-  static OverlayState? _overlayState;
 
   static int? _showToastNumber;
 
@@ -56,6 +55,11 @@ class ToastService {
       ),
     ]);
   }
+
+  // ── Constants ───────────────────────────────────────────────────────
+  static const int _defaultMaxToasts = 5;
+  static const double _toastSpacing = 10.0;
+  static const double _initialPosition = 30.0;
 
   // ── Configuration ───────────────────────────────────────────────────
 
@@ -106,7 +110,8 @@ class ToastService {
   static bool _isToastInFront(_ToastEntry entry) {
     final index = _activeToasts.indexOf(entry);
     if (index == -1) return false;
-    return index > _activeToasts.length - 5;
+    return index >
+        _activeToasts.length - (_showToastNumber ?? _defaultMaxToasts);
   }
 
   static void _updateOverlayPositions({bool isReverse = false, int pos = 0}) {
@@ -123,18 +128,18 @@ class ToastService {
 
   static void _reverseUpdatePositions({int pos = 0}) {
     for (int i = pos - 1; i >= 0; i--) {
-      _activeToasts[i].position.value -= 10;
+      _activeToasts[i].position.value -= _toastSpacing;
     }
   }
 
   static void _forwardUpdatePositions() {
     for (final entry in _activeToasts) {
-      entry.position.value += 10;
+      entry.position.value += _toastSpacing;
     }
   }
 
   static double _calculateOpacity(_ToastEntry entry) {
-    int noOfShowToast = _showToastNumber ?? 5;
+    int noOfShowToast = _showToastNumber ?? _defaultMaxToasts;
     if (_activeToasts.length <= noOfShowToast) return 1;
     final index = _activeToasts.indexOf(entry);
     if (index == -1) return 0;
@@ -210,8 +215,8 @@ class ToastService {
     late final ToastFuture future;
 
     if (context.mounted) {
-      _overlayState = Overlay.of(context);
-      final toastPosition = ValueNotifier<double>(30.0);
+      final overlayState = Overlay.of(context);
+      final toastPosition = ValueNotifier<double>(_initialPosition);
 
       late final _ToastEntry entry;
       final key = GlobalKey<_ToastOverlayUIState>();
@@ -246,7 +251,7 @@ class ToastService {
       );
 
       _addOverlayEntry(entry);
-      _overlayState?.insert(entry.overlayEntry);
+      overlayState.insert(entry.overlayEntry);
       _updateOverlayPositions();
 
       future = ToastFuture.create(
@@ -518,7 +523,7 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
           duration: const Duration(milliseconds: 300),
           curve: widget.effectivePositionCurve,
           child: Dismissible(
-            key: ObjectKey(widget.entry.hashCode),
+            key: ObjectKey(widget.entry),
             direction: widget.effectiveDismissDir,
             onUpdate: (details) {
               _dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);

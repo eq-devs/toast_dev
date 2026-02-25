@@ -43,13 +43,6 @@ class _MyAppState extends State<MyApp> {
               onPressed: () {
                 showToast(
                   message: "This is a message toast 👋😎!",
-                  // slideCurve: Curves.easeInToLinear,
-                  // positionCurve: Curves.elasticOut,
-                  // slideCurve: Curves.fastLinearToSlowEaseIn,
-                  // positionCurve: Curves.easeOut,
-                  // backgroundColor: Colors.teal.shade500,
-                  // shadowColor: Colors.teal.shade200,
-                  // leading: const Icon(Icons.messenger),
                 );
               },
               child: const Text('Show Message Toast'),

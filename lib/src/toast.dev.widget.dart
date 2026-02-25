@@ -2,15 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'toast.service.dart';
 
-/// Wrap your [MaterialApp] (or [CupertinoApp]) with [ToastDev]
-/// to enable context-free toast calls.
-///
-/// ```dart
-/// ToastDev(
-///   child: MaterialApp(...),
-/// )
-/// ```
-///
 class ToastDev extends StatefulWidget {
   const ToastDev({
     super.key,

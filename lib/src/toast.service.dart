@@ -10,32 +10,20 @@ import 'toast.position.dart';
 
 import 'toast.widget.dart';
 
-/// Show and manage toast notifications.
-///
-/// Wrap your app with [ToastDev] to enable context-free usage:
-/// ```dart
-/// ToastService.showToast(message: "Hello!");
-/// ```
 class ToastService {
-  // ── Internal state ──────────────────────────────────────────────────
-
   static final _expandedIndex = ValueNotifier<int>(-1);
   static final _toastCount = ValueNotifier<int>(0);
   static final List<_ToastEntry> _activeToasts = [];
 
   static int? _showToastNumber;
 
-  // ── Context-free support ────────────────────────────────────────────
-
   static final LinkedHashMap<State, BuildContext> _contextMap =
       LinkedHashMap<State, BuildContext>();
 
-  /// Called by [ToastDev] to register its context.
   static void registerContext(State state, BuildContext context) {
     _contextMap[state] = context;
   }
 
-  /// Called by [ToastDev] when disposed.
   static void unregisterContext(State state) {
     _contextMap.remove(state);
   }
@@ -57,14 +45,10 @@ class ToastService {
     ]);
   }
 
-  // ── Constants ───────────────────────────────────────────────────────
   static const int _defaultMaxToasts = 5;
   static const double _toastSpacing = 10.0;
   static const double _initialPosition = 30.0;
 
-  // ── Configuration ───────────────────────────────────────────────────
-
-  /// Set the maximum number of visible toasts (default: 5).
   static void showToastNumber(int val) {
     assert(
         val > 0, "Show toast number can't be negative or zero. Default is 5.");
@@ -73,8 +57,6 @@ class ToastService {
     }
   }
 
-  // ── Internal helpers ────────────────────────────────────────────────
-
   static Future _reverseAnimation(_ToastEntry entry,
       {bool isRemoveOverlay = true}) async {
     if (_activeToasts.contains(entry)) {
@@ -82,11 +64,11 @@ class ToastService {
       if (state != null) {
         await state.reverseAnimation();
       }
-      // Safety check: verify the toast still exists after the await
+
       if (!_activeToasts.contains(entry)) return;
 
       await Future.delayed(const Duration(milliseconds: 50));
-      // Safety check: verify the toast still exists after the delay
+
       if (!_activeToasts.contains(entry)) return;
 
       if (isRemoveOverlay) {
@@ -123,9 +105,7 @@ class ToastService {
     }
   }
 
-  static void _rebuildPositions() {
-    // No longer needed with ValueListenableBuilders
-  }
+  static void _rebuildPositions() {}
 
   static void _reverseUpdatePositions({int pos = 0}) {
     for (int i = pos - 1; i >= 0; i--) {
@@ -169,8 +149,6 @@ class ToastService {
     _toastCount.value = _activeToasts.length;
   }
 
-  // ── Core show method ────────────────────────────────────────────────
-
   static ToastFuture _showToast({
     BuildContext? context,
     dynamic tag,
@@ -194,7 +172,6 @@ class ToastService {
   }) {
     context = _resolveContext(context);
 
-    // Read defaults strictly from method arguments or fallback
     final isTop = (position ?? ToastPosition.top) == ToastPosition.top;
     final effectiveLength = length ?? ToastLength.short;
     final effectiveDismissDir = dismissDirection ?? DismissDirection.up;
@@ -274,7 +251,6 @@ class ToastService {
         };
       }
     } else {
-      // Return a no-op future if context is not mounted
       future = ToastFuture.create(
         entry: OverlayEntry(builder: (_) => const SizedBox.shrink()),
         controller: AnimationController(
@@ -287,7 +263,6 @@ class ToastService {
 
     return future;
   }
-  // ── Public API (top-level functions below) ──────────────────────────
 
   static Future dismiss({dynamic tag}) async {
     if (tag != null) {
@@ -304,7 +279,6 @@ class ToastService {
   }
 }
 
-/// Internal class to hold toast state.
 class _ToastEntry {
   final OverlayEntry overlayEntry;
   final dynamic tag;
@@ -319,13 +293,6 @@ class _ToastEntry {
   });
 }
 
-// ── Top-level API ─────────────────────────────────────────────────────
-
-/// Show a simple message toast.
-///
-/// ```dart
-/// showToast(message: "Hello!");
-/// ```
 ToastFuture showToast({
   BuildContext? context,
   dynamic tag,
@@ -368,13 +335,6 @@ ToastFuture showToast({
   );
 }
 
-/// Show a toast with a custom child widget.
-///
-/// ```dart
-/// showWidgetToast(
-///   child: ListTile(title: Text("Custom!")),
-/// );
-/// ```
 ToastFuture showWidgetToast({
   BuildContext? context,
   dynamic tag,
@@ -413,15 +373,8 @@ ToastFuture showWidgetToast({
   );
 }
 
-/// Dismiss a specific toast by [tag], or all toasts if [tag] is null.
-///
-/// ```dart
-/// dismissToast();       // dismiss all
-/// dismissToast(tag: 1); // dismiss specific
-/// ```
 Future dismissToast({dynamic tag}) => ToastService.dismiss(tag: tag);
 
-/// A no-op TickerProvider for fallback ToastFuture when context isn't mounted.
 class _NoTickerProvider extends TickerProvider {
   const _NoTickerProvider();
 
@@ -429,8 +382,6 @@ class _NoTickerProvider extends TickerProvider {
   Ticker createTicker(TickerCallback onTick) => Ticker(onTick);
 }
 
-/// The extracted UI widget that handles the layout, animations, and interaction
-/// of the toast on the overlay.
 class _ToastOverlayUI extends StatefulWidget {
   const _ToastOverlayUI({
     super.key,

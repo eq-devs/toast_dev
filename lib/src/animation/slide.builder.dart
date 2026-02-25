@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'animation.builder.dart';
 
-/// Direction from which the toast slides in.
 enum SlideDirection { fromTop, fromBottom, fromLeft, fromRight }
 
-/// Slides the toast in from a configurable direction.
 class SlideAnimationBuilder extends BaseAnimationBuilder {
   const SlideAnimationBuilder({
     this.direction = SlideDirection.fromTop,

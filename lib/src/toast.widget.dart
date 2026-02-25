@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'animation/animation.builder.dart';
 
-/// The visual toast widget with slide animation, shadow, and interaction.
 class ToastWidget extends StatelessWidget {
   const ToastWidget({
     super.key,
@@ -41,7 +40,6 @@ class ToastWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Create the animation objects ONCE per build, not per frame
     final animationValue = CurvedAnimation(
       parent: controller!,
       curve: slideCurve ?? Curves.elasticOut,
@@ -53,10 +51,8 @@ class ToastWidget extends StatelessWidget {
       end: Offset.zero,
     );
 
-    // 2. Build the heavy physical widget tree ONCE
     Widget content = _BuildContent(widget: this);
 
-    // Use custom animation builder if provided
     if (animationBuilder != null) {
       return animationBuilder!(
         context,
@@ -66,7 +62,6 @@ class ToastWidget extends StatelessWidget {
       );
     }
 
-    // Default slide animation
     return AnimatedBuilder(
       animation: controller!,
       builder: (context, child) {
@@ -75,11 +70,11 @@ class ToastWidget extends StatelessWidget {
           child: AnimatedSlide(
             offset: offsetTween.evaluate(animationValue),
             duration: Duration.zero,
-            child: child, // Re-use the previously built content
+            child: child,
           ),
         );
       },
-      child: content, // Pass the static content to AnimatedBuilder
+      child: content,
     );
   }
 }
@@ -98,7 +93,6 @@ class _BuildContent extends StatelessWidget {
         padding: (widget.child != null)
             ? null
             : const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           color: widget.backgroundColor ?? Colors.white,

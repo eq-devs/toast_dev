@@ -3,17 +3,14 @@ import 'package:flutter/material.dart';
 import 'animation.builder.dart';
 import 'slide.builder.dart';
 
-/// Combines a fade and slide animation for a premium entrance effect.
 class FadeSlideAnimationBuilder extends BaseAnimationBuilder {
   const FadeSlideAnimationBuilder({
     this.direction = SlideDirection.fromTop,
     this.slideOffset = 0.3,
   });
 
-  /// The direction of the slide.
   final SlideDirection direction;
 
-  /// How far the toast slides (as a fraction). Defaults to `0.3`.
   final double slideOffset;
 
   Offset get _beginOffset => switch (direction) {

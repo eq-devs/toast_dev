@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'animation.builder.dart';
 
-/// Fades the toast in/out using opacity.
 class FadeAnimationBuilder extends BaseAnimationBuilder {
   const FadeAnimationBuilder();
 

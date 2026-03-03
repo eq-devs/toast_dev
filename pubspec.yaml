@@ -1,7 +1,8 @@
 name: toast_dev
 description: A beautiful toast library with smooth animations for Flutter.
-version: 1.0.4
-
+version: 1.1.0
+repository: https://github.com/eq-devs/toast_dev
+homepage: https://github.com/eq-devs/toast_dev
 environment:
   sdk: '>=3.1.4 <4.0.0'
   flutter: ">=1.17.0"

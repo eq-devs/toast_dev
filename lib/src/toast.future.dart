@@ -15,6 +15,9 @@ class ToastFuture {
 
   Timer? _timer;
   bool _dismissed = false;
+  bool _isPaused = false;
+  DateTime? _startTime;
+  Duration? _remainingTime;
 
   Future<void> Function()? onDismissedWithAnimation;
 
@@ -22,8 +25,38 @@ class ToastFuture {
 
   bool get mounted => !_dismissed;
 
+  bool get isPaused => _isPaused;
+
   void setTimer(Duration duration) {
+    _remainingTime = duration;
+    _startTime = DateTime.now();
     _timer = Timer(duration, dismiss);
+  }
+
+  void pauseTimer() {
+    if (_isPaused ||
+        _dismissed ||
+        _remainingTime == null ||
+        _startTime == null) {
+      return;
+    }
+    _isPaused = true;
+    _timer?.cancel();
+    final elapsed = DateTime.now().difference(_startTime!);
+    _remainingTime = _remainingTime! - elapsed;
+    if (_remainingTime!.isNegative) {
+      _remainingTime = Duration.zero;
+    }
+  }
+
+  void resumeTimer() {
+    if (!_isPaused || _dismissed || _remainingTime == null) {
+      return;
+    }
+    _isPaused = false;
+    _startTime = DateTime.now();
+    // If remaining time is zero or negative, dismiss immediately (though Timer with 0 basically does this)
+    _timer = Timer(_remainingTime!, dismiss);
   }
 
   void dismiss() async {

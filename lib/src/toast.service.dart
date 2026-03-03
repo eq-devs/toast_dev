@@ -242,6 +242,7 @@ class ToastService {
           _close(entry);
         },
       );
+      entry.future = future;
 
       if (isAutoDismiss) {
         future.setTimer(effectiveLength.duration);
@@ -284,6 +285,7 @@ class _ToastEntry {
   final dynamic tag;
   final ValueNotifier<double> position;
   final GlobalKey<_ToastOverlayUIState> stateKey;
+  ToastFuture? future;
 
   _ToastEntry({
     required this.overlayEntry,
@@ -504,25 +506,35 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
                 child: AnimatedOpacity(
                   opacity: ToastService._calculateOpacity(widget.entry),
                   duration: const Duration(milliseconds: 300),
-                  child: ToastWidget(
-                    message: widget.message,
-                    messageStyle: widget.effectiveMessageStyle,
-                    backgroundColor: widget.effectiveBgColor,
-                    shadowColor: widget.effectiveShadowColor,
-                    iconColor: widget.effectiveIconColor,
-                    slideCurve: widget.effectiveSlideCurve,
-                    isClosable: widget.effectiveClosable,
-                    isTop: widget.isTop,
-                    isInFront: ToastService._isToastInFront(widget.entry),
-                    controller: _controller,
-                    animationBuilder: widget.effectiveAnimBuilder,
-                    onTap: () => ToastService._toggleExpand(widget.entry),
-                    onClose: () async {
-                      await _controller.reverse();
-                      ToastService._close(widget.entry);
-                    },
-                    leading: widget.leading,
-                    child: widget.child,
+                  child: MouseRegion(
+                    onEnter: (_) => widget.entry.future?.pauseTimer(),
+                    onExit: (_) => widget.entry.future?.resumeTimer(),
+                    child: Listener(
+                      onPointerDown: (_) => widget.entry.future?.pauseTimer(),
+                      onPointerUp: (_) => widget.entry.future?.resumeTimer(),
+                      onPointerCancel: (_) =>
+                          widget.entry.future?.resumeTimer(),
+                      child: ToastWidget(
+                        message: widget.message,
+                        messageStyle: widget.effectiveMessageStyle,
+                        backgroundColor: widget.effectiveBgColor,
+                        shadowColor: widget.effectiveShadowColor,
+                        iconColor: widget.effectiveIconColor,
+                        slideCurve: widget.effectiveSlideCurve,
+                        isClosable: widget.effectiveClosable,
+                        isTop: widget.isTop,
+                        isInFront: ToastService._isToastInFront(widget.entry),
+                        controller: _controller,
+                        animationBuilder: widget.effectiveAnimBuilder,
+                        onTap: () => ToastService._toggleExpand(widget.entry),
+                        onClose: () async {
+                          await _controller.reverse();
+                          ToastService._close(widget.entry);
+                        },
+                        leading: widget.leading,
+                        child: widget.child,
+                      ),
+                    ),
                   ),
                 ),
               ),

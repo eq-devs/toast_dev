@@ -11,7 +11,6 @@ import 'toast.position.dart';
 import 'toast.widget.dart';
 
 class ToastService {
-  static final _expandedIndex = ValueNotifier<int>(-1);
   static final _toastCount = ValueNotifier<int>(0);
   static final List<_ToastEntry> _activeToasts = [];
 
@@ -105,8 +104,6 @@ class ToastService {
     }
   }
 
-  static void _rebuildPositions() {}
-
   static void _reverseUpdatePositions({int pos = 0}) {
     for (int i = pos - 1; i >= 0; i--) {
       _activeToasts[i].position.value -= _toastSpacing;
@@ -127,16 +124,6 @@ class ToastService {
     return (index >= _activeToasts.length - noOfShowToast) ? 1 : 0;
   }
 
-  static void _toggleExpand(_ToastEntry entry) {
-    final index = _activeToasts.indexOf(entry);
-    if (_expandedIndex.value == index) {
-      _expandedIndex.value = -1;
-    } else {
-      _expandedIndex.value = index;
-    }
-    _rebuildPositions();
-  }
-
   static void _close(_ToastEntry entry) {
     final index = _activeToasts.indexOf(entry);
     if (index == -1) return;
@@ -154,15 +141,12 @@ class ToastService {
     dynamic tag,
     String? message,
     TextStyle? messageStyle,
-    Widget? leading,
     Widget? child,
-    bool? isClosable,
     bool isAutoDismiss = true,
     ToastPosition? position,
     double? expandedHeight,
     Color? backgroundColor,
     Color? shadowColor,
-    Color? iconColor,
     Curve? slideCurve,
     Curve? positionCurve,
     ToastLength? length,
@@ -174,14 +158,13 @@ class ToastService {
 
     final isTop = (position ?? ToastPosition.top) == ToastPosition.top;
     final effectiveLength = length ?? ToastLength.short;
-    final effectiveDismissDir = dismissDirection ?? DismissDirection.up;
+    final effectiveDismissDir = dismissDirection ??
+        (isTop ? DismissDirection.up : DismissDirection.down);
     final effectiveExpandedHeight = expandedHeight ?? 100.0;
-    final effectiveClosable = isClosable ?? false;
     final effectivePositionCurve = positionCurve ?? Curves.elasticOut;
     final effectiveSlideCurve = slideCurve;
     final effectiveBgColor = backgroundColor;
     final effectiveShadowColor = shadowColor;
-    final effectiveIconColor = iconColor;
     final effectiveMessageStyle = messageStyle;
     final effectiveAnimBuilder = animationBuilder;
     final effectiveAnimDuration =
@@ -210,13 +193,10 @@ class ToastService {
           effectiveMessageStyle: effectiveMessageStyle,
           effectiveBgColor: effectiveBgColor,
           effectiveShadowColor: effectiveShadowColor,
-          effectiveIconColor: effectiveIconColor,
           effectiveSlideCurve: effectiveSlideCurve,
-          effectiveClosable: effectiveClosable,
           effectiveAnimBuilder: effectiveAnimBuilder,
           effectiveAnimDuration: effectiveAnimDuration,
           message: message,
-          leading: leading,
           child: child,
         ),
       );
@@ -300,14 +280,11 @@ ToastFuture showToast({
   dynamic tag,
   String? message,
   TextStyle? messageStyle,
-  Widget? leading,
-  bool? isClosable,
   bool isAutoDismiss = true,
   ToastPosition? position,
   double? expandedHeight,
   Color? backgroundColor,
   Color? shadowColor,
-  Color? iconColor,
   Curve? slideCurve,
   Curve? positionCurve,
   ToastLength? length,
@@ -320,18 +297,15 @@ ToastFuture showToast({
     tag: tag,
     message: message,
     messageStyle: messageStyle,
-    isClosable: isClosable,
     isAutoDismiss: isAutoDismiss,
     position: position,
     expandedHeight: expandedHeight,
     backgroundColor: backgroundColor,
     shadowColor: shadowColor,
-    iconColor: iconColor,
     positionCurve: positionCurve,
     slideCurve: slideCurve,
     length: length,
     dismissDirection: dismissDirection,
-    leading: leading,
     animationBuilder: animationBuilder,
     animationDuration: animationDuration,
   );
@@ -341,13 +315,11 @@ ToastFuture showWidgetToast({
   BuildContext? context,
   dynamic tag,
   Widget? child,
-  bool? isClosable,
   bool isAutoDismiss = true,
   ToastPosition? position,
   double? expandedHeight,
   Color? backgroundColor,
   Color? shadowColor,
-  Color? iconColor,
   Curve? slideCurve,
   Curve? positionCurve,
   ToastLength? length,
@@ -358,13 +330,11 @@ ToastFuture showWidgetToast({
   return ToastService._showToast(
     context: context,
     tag: tag,
-    isClosable: isClosable,
     isAutoDismiss: isAutoDismiss,
     position: position,
     expandedHeight: expandedHeight,
     backgroundColor: backgroundColor,
     shadowColor: shadowColor,
-    iconColor: iconColor,
     positionCurve: positionCurve,
     slideCurve: slideCurve,
     length: length,
@@ -395,13 +365,10 @@ class _ToastOverlayUI extends StatefulWidget {
     required this.effectiveMessageStyle,
     required this.effectiveBgColor,
     required this.effectiveShadowColor,
-    required this.effectiveIconColor,
     required this.effectiveSlideCurve,
-    required this.effectiveClosable,
     required this.effectiveAnimBuilder,
     required this.effectiveAnimDuration,
     this.message,
-    this.leading,
     this.child,
   });
 
@@ -413,13 +380,10 @@ class _ToastOverlayUI extends StatefulWidget {
   final TextStyle? effectiveMessageStyle;
   final Color? effectiveBgColor;
   final Color? effectiveShadowColor;
-  final Color? effectiveIconColor;
   final Curve? effectiveSlideCurve;
-  final bool effectiveClosable;
   final ToastAnimationBuilder? effectiveAnimBuilder;
   final Duration effectiveAnimDuration;
   final String? message;
-  final Widget? leading;
   final Widget? child;
 
   @override
@@ -458,19 +422,13 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
   Widget build(BuildContext context) {
     final paddingTop = MediaQuery.paddingOf(context).top;
     return ListenableBuilder(
-      listenable: Listenable.merge([
-        widget.entry.position,
-        ToastService._expandedIndex,
-        ToastService._toastCount
-      ]),
+      listenable:
+          Listenable.merge([widget.entry.position, ToastService._toastCount]),
       builder: (context, _) {
         final index = ToastService._activeToasts.indexOf(widget.entry);
         if (index == -1) return const SizedBox.shrink();
 
-        final pos = widget.entry.position.value +
-            (index == ToastService._expandedIndex.value
-                ? widget.effectiveExpandedHeight
-                : 0.0);
+        final pos = widget.entry.position.value;
         return AnimatedPositioned(
           top: widget.isTop ? paddingTop + pos : null,
           bottom: widget.isTop ? null : pos,
@@ -497,9 +455,7 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
               },
               child: AnimatedPadding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: (index == ToastService._expandedIndex.value
-                      ? 10
-                      : max(widget.entry.position.value - 35, 0.0)),
+                  horizontal: max(widget.entry.position.value - 35, 0.0),
                 ),
                 duration: const Duration(milliseconds: 300),
                 curve: widget.effectivePositionCurve,
@@ -519,19 +475,11 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
                         messageStyle: widget.effectiveMessageStyle,
                         backgroundColor: widget.effectiveBgColor,
                         shadowColor: widget.effectiveShadowColor,
-                        iconColor: widget.effectiveIconColor,
                         slideCurve: widget.effectiveSlideCurve,
-                        isClosable: widget.effectiveClosable,
                         isTop: widget.isTop,
                         isInFront: ToastService._isToastInFront(widget.entry),
                         controller: _controller,
                         animationBuilder: widget.effectiveAnimBuilder,
-                        onTap: () => ToastService._toggleExpand(widget.entry),
-                        onClose: () async {
-                          await _controller.reverse();
-                          ToastService._close(widget.entry);
-                        },
-                        leading: widget.leading,
                         child: widget.child,
                       ),
                     ),

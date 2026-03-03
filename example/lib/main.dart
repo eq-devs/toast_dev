@@ -43,6 +43,7 @@ class _MyAppState extends State<MyApp> {
               onPressed: () {
                 showToast(
                   message: "This is a message toast 👋😎!",
+                  position: ToastPosition.bottom,
                 );
               },
               child: const Text('Show Message Toast'),

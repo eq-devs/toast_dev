@@ -6,17 +6,12 @@ class ToastWidget extends StatelessWidget {
   const ToastWidget({
     super.key,
     this.isInFront = false,
-    required this.onTap,
-    this.onClose,
     this.message,
     this.messageStyle,
-    this.leading,
     this.child,
-    this.isClosable,
     this.isTop,
     this.backgroundColor,
     this.shadowColor,
-    this.iconColor,
     required this.controller,
     this.slideCurve,
     this.animationBuilder,
@@ -25,16 +20,11 @@ class ToastWidget extends StatelessWidget {
   final String? message;
   final TextStyle? messageStyle;
   final Widget? child;
-  final Widget? leading;
   final Color? backgroundColor;
   final Color? shadowColor;
-  final Color? iconColor;
   final AnimationController? controller;
   final bool isInFront;
-  final VoidCallback onTap;
-  final VoidCallback? onClose;
   final Curve? slideCurve;
-  final bool? isClosable;
   final bool? isTop;
   final ToastAnimationBuilder? animationBuilder;
 
@@ -115,39 +105,20 @@ class _BuildContent extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () {
-                  widget.onTap.call();
-                },
-                borderRadius: BorderRadius.circular(15),
-                child: (widget.child != null)
-                    ? widget.child
-                    : Row(
-                        children: [
-                          if (widget.leading != null) ...[
-                            widget.leading!,
-                            const SizedBox(width: 10),
-                          ],
-                          if (widget.message != null)
-                            Expanded(
-                              child: Text(
-                                widget.message!,
-                                style: widget.messageStyle,
-                              ),
+              child: (widget.child != null)
+                  ? widget.child!
+                  : Row(
+                      children: [
+                        if (widget.message != null)
+                          Expanded(
+                            child: Text(
+                              widget.message!,
+                              style: widget.messageStyle,
                             ),
-                        ],
-                      ),
-              ),
+                          ),
+                      ],
+                    ),
             ),
-            if (widget.isClosable ?? false)
-              InkWell(
-                onTap: widget.onClose,
-                child: Icon(
-                  Icons.close,
-                  color: widget.iconColor,
-                  size: 18,
-                ),
-              ),
           ],
         ),
       ),

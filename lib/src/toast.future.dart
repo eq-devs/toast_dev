@@ -59,6 +59,28 @@ class ToastFuture {
     _timer = Timer(_remainingTime!, dismiss);
   }
 
+  void addDuration(Duration duration) {
+    if (_dismissed) return;
+
+    // If we're paused, just add to remaining time.
+    if (_isPaused && _remainingTime != null) {
+      _remainingTime = _remainingTime! + duration;
+      return;
+    }
+
+    // If currently running, calculate new remaining time and restart the timer.
+    if (!_isPaused && _startTime != null && _remainingTime != null) {
+      _timer?.cancel();
+      final elapsed = DateTime.now().difference(_startTime!);
+      _remainingTime = (_remainingTime! + duration) - elapsed;
+      if (_remainingTime!.isNegative) {
+        _remainingTime = Duration.zero;
+      }
+      _startTime = DateTime.now();
+      _timer = Timer(_remainingTime!, dismiss);
+    }
+  }
+
   void dismiss() async {
     if (_dismissed) return;
     _dismissed = true;

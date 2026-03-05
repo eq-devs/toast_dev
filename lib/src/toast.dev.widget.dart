@@ -23,17 +23,22 @@ class _ToastDevState extends State<ToastDev> {
 
   @override
   Widget build(BuildContext context) {
+    final directionality = Directionality.maybeOf(context) ?? TextDirection.ltr;
+
     return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Overlay(
-        initialEntries: [
-          OverlayEntry(
-            builder: (BuildContext ctx) {
-              ToastService.registerContext(this, ctx);
-              return widget.child;
-            },
-          ),
-        ],
+      textDirection: directionality,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Overlay(
+          initialEntries: [
+            OverlayEntry(
+              builder: (BuildContext ctx) {
+                ToastService.registerContext(this, ctx);
+                return widget.child;
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

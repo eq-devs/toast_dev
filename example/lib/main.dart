@@ -39,6 +39,13 @@ class _MyAppState extends State<MyApp> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const TextField(
+              decoration: InputDecoration(
+                hintText: 'Try copying and pasting here',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
             FilledButton(
               onPressed: () {
                 showToast(

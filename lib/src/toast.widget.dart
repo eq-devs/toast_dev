@@ -33,71 +33,68 @@ class ToastWidget extends StatefulWidget {
 }
 
 class _ToastWidgetState extends State<ToastWidget> {
-  late CurvedAnimation _animation;
+  late CurvedAnimation _curved;
+  late Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
-    _animation = _buildAnimation();
+    _buildAnimations();
   }
 
   @override
   void didUpdateWidget(ToastWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller ||
-        oldWidget.slideCurve != widget.slideCurve) {
-      _animation.dispose();
-      _animation = _buildAnimation();
+        oldWidget.slideCurve != widget.slideCurve ||
+        oldWidget.isTop != widget.isTop) {
+      _curved.dispose();
+      _buildAnimations();
     }
   }
 
   @override
   void dispose() {
-    _animation.dispose();
+    _curved.dispose();
     super.dispose();
   }
 
-  CurvedAnimation _buildAnimation() => CurvedAnimation(
-        parent: widget.controller,
-        curve: widget.slideCurve ?? Curves.elasticOut,
-        reverseCurve: widget.slideCurve ?? Curves.elasticOut,
-      );
+  void _buildAnimations() {
+    final curve = widget.slideCurve ?? Curves.elasticOut;
+    _curved = CurvedAnimation(
+      parent: widget.controller,
+      curve: curve,
+      reverseCurve: curve,
+    );
+    _slide = Tween<Offset>(
+      begin: Offset(0.0, widget.isTop ? -1.0 : 1.0),
+      end: Offset.zero,
+    ).animate(_curved);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final offsetTween = Tween<Offset>(
-      begin: Offset(0.0, widget.isTop ? -1.0 : 1.0),
-      end: Offset.zero,
-    );
-
     final content = _BuildContent(toast: widget);
 
     if (widget.animationBuilder != null) {
       return AnimatedBuilder(
-        animation: widget.controller,
+        animation: _curved,
         builder: (context, child) => widget.animationBuilder!(
           context,
           child!,
           widget.controller,
-          _animation.value,
+          _curved.value,
         ),
         child: content,
       );
     }
 
-    return AnimatedBuilder(
-      animation: widget.controller,
-      builder: (context, child) {
-        return FadeTransition(
-          opacity: _animation,
-          child: AnimatedSlide(
-            offset: offsetTween.evaluate(_animation),
-            duration: Duration.zero,
-            child: child,
-          ),
-        );
-      },
-      child: content,
+    return FadeTransition(
+      opacity: _curved,
+      child: SlideTransition(
+        position: _slide,
+        child: content,
+      ),
     );
   }
 }
@@ -112,7 +109,6 @@ class _BuildContent extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       child: Container(
-        width: MediaQuery.sizeOf(context).width,
         padding: toast.child != null
             ? null
             : const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -120,7 +116,7 @@ class _BuildContent extends StatelessWidget {
           borderRadius: BorderRadius.circular(15),
           color: toast.backgroundColor ?? Colors.white,
           boxShadow: !toast.isInFront
-              ? []
+              ? null
               : [
                   BoxShadow(
                     blurRadius: 0.5,
@@ -134,24 +130,11 @@ class _BuildContent extends StatelessWidget {
                   ),
                 ],
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: toast.child ??
-                  Row(
-                    children: [
-                      if (toast.message != null)
-                        Expanded(
-                          child: Text(
-                            toast.message!,
-                            style: toast.messageStyle,
-                          ),
-                        ),
-                    ],
-                  ),
+        child: toast.child ??
+            Text(
+              toast.message!,
+              style: toast.messageStyle,
             ),
-          ],
-        ),
       ),
     );
   }

@@ -1,3 +1,12 @@
+## 1.1.3
+
+* **Perf:** `ToastWidget` no longer rebuilds its content subtree every animation frame. Replaced `AnimatedBuilder` + `AnimatedSlide(duration: 0)` with `FadeTransition` + `SlideTransition`, which mutate the render object directly.
+* **Perf:** Cached `CurvedAnimation` and slide `Tween` in state instead of recreating them inside `build()`.
+* **Perf:** Wrapped toast content in `RepaintBoundary` so position/padding animations re-composite a cached layer instead of repainting text, decoration, and shadow each frame.
+* **Perf:** Inlined `_isToastInFront` and `_calculateOpacity` so `indexOf(entry)` runs once per rebuild instead of three times.
+* **Perf:** Removed unconditional `Future.delayed(50ms)` in the reverse-animation path — the controller's `reverse()` already completed.
+* **Cleanup:** Dropped redundant `Container(width: screenWidth)` + outer `Row`/`Expanded` in the toast content; sizing comes from `Positioned(left, right)`. Empty shadow list replaced with `null` to skip the shadow paint path.
+
 ## 1.1.2
 
 * **Fix:** `CurvedAnimation` created in `build()` without disposal — `ToastWidget` converted to `StatefulWidget` to manage animation lifecycle correctly.

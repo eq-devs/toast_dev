@@ -57,21 +57,17 @@ class ToastService {
 
   static Future _reverseAnimation(_ToastEntry entry,
       {bool isRemoveOverlay = true}) async {
-    if (_activeToasts.contains(entry)) {
-      final state = entry.stateKey.currentState;
-      if (state != null) {
-        await state.reverseAnimation();
-      }
+    if (!_activeToasts.contains(entry)) return;
 
-      if (!_activeToasts.contains(entry)) return;
+    final state = entry.stateKey.currentState;
+    if (state != null) {
+      await state.reverseAnimation();
+    }
 
-      await Future.delayed(const Duration(milliseconds: 50));
+    if (!_activeToasts.contains(entry)) return;
 
-      if (!_activeToasts.contains(entry)) return;
-
-      if (isRemoveOverlay) {
-        _close(entry);
-      }
+    if (isRemoveOverlay) {
+      _close(entry);
     }
   }
 
@@ -86,13 +82,6 @@ class ToastService {
   static void _addOverlayEntry(_ToastEntry entry) {
     _activeToasts.add(entry);
     _toastCount.value = _activeToasts.length;
-  }
-
-  static bool _isToastInFront(_ToastEntry entry) {
-    final index = _activeToasts.indexOf(entry);
-    if (index == -1) return false;
-    return index >
-        _activeToasts.length - (_showToastNumber ?? _defaultMaxToasts);
   }
 
   static void _updateOverlayPositions({bool isReverse = false, int pos = 0}) {
@@ -113,14 +102,6 @@ class ToastService {
     for (final entry in _activeToasts) {
       entry.position.value += _toastSpacing;
     }
-  }
-
-  static double _calculateOpacity(_ToastEntry entry) {
-    int noOfShowToast = _showToastNumber ?? _defaultMaxToasts;
-    if (_activeToasts.length <= noOfShowToast) return 1;
-    final index = _activeToasts.indexOf(entry);
-    if (index == -1) return 0;
-    return (index >= _activeToasts.length - noOfShowToast) ? 1 : 0;
   }
 
   static void _close(_ToastEntry entry) {
@@ -409,8 +390,15 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
       listenable:
           Listenable.merge([widget.entry.position, ToastService._toastCount]),
       builder: (context, _) {
-        final index = ToastService._activeToasts.indexOf(widget.entry);
+        final active = ToastService._activeToasts;
+        final index = active.indexOf(widget.entry);
         if (index == -1) return const SizedBox.shrink();
+
+        final maxVisible =
+            ToastService._showToastNumber ?? ToastService._defaultMaxToasts;
+        final threshold = active.length - maxVisible;
+        final visible = active.length <= maxVisible || index >= threshold;
+        final isInFront = index > threshold;
 
         final pos = widget.entry.position.value;
         return AnimatedPositioned(
@@ -440,12 +428,12 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
               },
               child: AnimatedPadding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: max(widget.entry.position.value - 35, 0.0),
+                  horizontal: max(pos - 35, 0.0),
                 ),
                 duration: const Duration(milliseconds: 300),
                 curve: widget.effectivePositionCurve,
                 child: AnimatedOpacity(
-                  opacity: ToastService._calculateOpacity(widget.entry),
+                  opacity: visible ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: MouseRegion(
                     onEnter: (_) => widget.entry.future?.pauseTimer(),
@@ -455,17 +443,19 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
                       onPointerUp: (_) => widget.entry.future?.resumeTimer(),
                       onPointerCancel: (_) =>
                           widget.entry.future?.resumeTimer(),
-                      child: ToastWidget(
-                        message: widget.message,
-                        messageStyle: widget.effectiveMessageStyle,
-                        backgroundColor: widget.effectiveBgColor,
-                        shadowColor: widget.effectiveShadowColor,
-                        slideCurve: widget.effectiveSlideCurve,
-                        isTop: widget.isTop,
-                        isInFront: ToastService._isToastInFront(widget.entry),
-                        controller: _controller,
-                        animationBuilder: widget.effectiveAnimBuilder,
-                        child: widget.child,
+                      child: RepaintBoundary(
+                        child: ToastWidget(
+                          message: widget.message,
+                          messageStyle: widget.effectiveMessageStyle,
+                          backgroundColor: widget.effectiveBgColor,
+                          shadowColor: widget.effectiveShadowColor,
+                          slideCurve: widget.effectiveSlideCurve,
+                          isTop: widget.isTop,
+                          isInFront: isInFront,
+                          controller: _controller,
+                          animationBuilder: widget.effectiveAnimBuilder,
+                          child: widget.child,
+                        ),
                       ),
                     ),
                   ),

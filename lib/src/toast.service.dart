@@ -2,7 +2,6 @@ import 'dart:collection';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'animation/animation.builder.dart';
 import 'toast.future.dart';
 import 'toast.length.dart';
@@ -71,7 +70,7 @@ class ToastService {
       if (!_activeToasts.contains(entry)) return;
 
       if (isRemoveOverlay) {
-        _removeOverlayEntry(entry);
+        _close(entry);
       }
     }
   }
@@ -214,10 +213,6 @@ class ToastService {
 
       future = ToastFuture.create(
         entry: overlayEntry,
-        controller: AnimationController(
-          vsync: const _NoTickerProvider(),
-          duration: Duration.zero,
-        ),
         onDismiss: () {
           _close(entry);
         },
@@ -234,10 +229,6 @@ class ToastService {
     } else {
       future = ToastFuture.create(
         entry: OverlayEntry(builder: (_) => const SizedBox.shrink()),
-        controller: AnimationController(
-          vsync: const _NoTickerProvider(),
-          duration: Duration.zero,
-        ),
       );
       future.dismiss();
     }
@@ -347,13 +338,6 @@ ToastFuture showWidgetToast({
 
 Future dismissToast({dynamic tag}) => ToastService.dismiss(tag: tag);
 
-class _NoTickerProvider extends TickerProvider {
-  const _NoTickerProvider();
-
-  @override
-  Ticker createTicker(TickerCallback onTick) => Ticker(onTick);
-}
-
 class _ToastOverlayUI extends StatefulWidget {
   const _ToastOverlayUI({
     super.key,
@@ -443,6 +427,7 @@ class _ToastOverlayUIState extends State<_ToastOverlayUI>
               _dragProgress.value = 1.0 - details.progress.clamp(0.0, 1.0);
             },
             onDismissed: (_) {
+              widget.entry.future?.cancel();
               ToastService._close(widget.entry);
             },
             child: ValueListenableBuilder<double>(

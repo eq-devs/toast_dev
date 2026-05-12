@@ -15,6 +15,8 @@ class ToastDev extends StatefulWidget {
 }
 
 class _ToastDevState extends State<ToastDev> {
+  bool _registered = false;
+
   @override
   void dispose() {
     ToastService.unregisterContext(this);
@@ -33,7 +35,12 @@ class _ToastDevState extends State<ToastDev> {
           initialEntries: [
             OverlayEntry(
               builder: (BuildContext ctx) {
-                ToastService.registerContext(this, ctx);
+                if (!_registered) {
+                  _registered = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) ToastService.registerContext(this, ctx);
+                  });
+                }
                 return widget.child;
               },
             ),
